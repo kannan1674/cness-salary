@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<!-- DESIGN SOURCE: edit this file, then run npm run sync-template -->
+<!-- All PDFs (local + Netlify) render THIS file via Puppeteer for 100% match -->
+<!-- Fallback only: src/components/PayslipDocument.tsx (@react-pdf/renderer) -->
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    body {
+      font-family: "Times New Roman", Times, serif;
+      background: #fff;
+      margin: 0;
+      padding: 0;
+      color: #213b57;
+    }
+
+    .page {
+      width: 794px;
+      height: 1123px;
+      margin: auto;
+      padding: 56px 90px;
+      box-sizing: border-box;
+      position: relative;
+    }
+
+    .header {
+      height: 130px;
+      background: #332b82;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .header img {
+      width: 160px;
+      margin: 25px 0 0 45px;
+    }
+
+    .yellow {
+      position: absolute;
+      right: 0;
+      top: 48px;
+      width: 300px;
+      height: 55px;
+      background: #ffc20e;
+      border-top-left-radius: 55px;
+    }
+
+    h3 {
+      font-size: 13px;
+      margin: 26px 0 6px;
+      border-bottom: 1px solid #213b57;
+      padding-bottom: 6px;
+      text-transform: uppercase;
+    }
+
+    .details {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      margin-top: 22px;
+    }
+
+    .details td {
+      padding: 6px 8px;
+      width: 25%;
+      font-weight: bold;
+    }
+
+    .details td:nth-child(2),
+    .details td:nth-child(4) {
+      color: #000000;
+    }
+
+    .details tr:nth-child(even) {
+      background: #f2f2f2;
+    }
+
+    .salary {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      margin-top: 22px;
+      color: #111;
+    }
+
+    .salary th.section {
+      background: #332b82;
+      color: #fff;
+      text-align: left;
+      padding: 8px;
+      font-size: 13px;
+    }
+
+    .salary th {
+      background: #e8eef7;
+      padding: 8px;
+      color: #213b57;
+      border: 1px solid #d7dce5;
+    }
+
+    .salary td {
+      padding: 7px 8px;
+    }
+
+    .salary td.amount {
+      color: #000000;
+      font-weight: bold;
+    }
+
+    .salary tr:nth-child(even) td {
+      background: #f3f3f3;
+    }
+
+    .amount {
+      text-align: right;
+    }
+
+    .deduct {
+      color: #000000;
+    }
+
+    .total {
+      display: flex;
+      margin-top: 26px;
+      background: #332b82;
+      color: white;
+      font-weight: bold;
+      font-size: 12px;
+    }
+
+    .total div {
+      width: 50%;
+      padding: 8px;
+      box-sizing: border-box;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .net {
+      margin-top: 20px;
+      background: #332b82;
+      color: #fff;
+      padding: 14px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      font-weight: bold;
+    }
+
+    .note {
+      margin-top: 16px;
+      color: #777;
+      font-size: 12px;
+      font-style: italic;
+    }
+
+    .sign {
+      margin-top: 24px;
+      font-size: 12px;
+    }
+
+    .sign-images {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 24px;
+      margin: 8px 0 12px;
+    }
+
+    .sign-images img {
+      display: block;
+      width: 100px;
+      height: 100px;
+      object-fit: contain;
+    }
+
+    .footer {
+      position: absolute;
+      bottom: 38px;
+      left: 0;
+      right: 0;
+      text-align: center;
+      font: bold 11px "Times New Roman", Times, serif;
+      color: #777;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="page">
+    <div class="header">
+      <img src="https://nandhiji.com/wp-content/uploads/2026/Outsource/cness.png" alt="CNESS Logo" />
+      <div class="yellow"></div>
+    </div>
+
+    <h3>Employee Details</h3>
+
+    <table class="details">
+      <tr>
+        <td>Employee<br>Name</td>
+        <td>{{employeeName}}</td>
+        <td>Employee ID</td>
+        <td>{{employeeId}}</td>
+      </tr>
+      <tr>
+        <td>Designation</td>
+        <td>{{designation}}</td>
+        <td>Department</td>
+        <td>{{department}}</td>
+      </tr>
+      <tr>
+        <td>Date of Joining</td>
+        <td>{{dateOfJoining}}</td>
+        <td>PAN Number</td>
+        <td>{{panNumber}}</td>
+      </tr>
+      <tr>
+        <td>Bank Name</td>
+        <td>{{bankName}}</td>
+        <td>Account Number</td>
+        <td>{{accountNumber}}</td>
+      </tr>
+      <tr>
+        <td>IFSC Code</td>
+        <td>{{ifscCode}}</td>
+        <td>Pay Period</td>
+        <td>{{payPeriod}}</td>
+      </tr>
+      <tr>
+        <td>Working Days</td>
+        <td>{{workingDays}}</td>
+        <td>Days Present</td>
+        <td>{{daysPresent}}</td>
+      </tr>
+    </table>
+
+    <h3>Salary Breakdown</h3>
+
+    <table class="salary">
+      <tr>
+        <th class="section" colspan="2">EARNINGS</th>
+        <th class="section" colspan="2">DEDUCTIONS</th>
+      </tr>
+      <tr>
+        <th>Description</th>
+        <th class="amount">Amount (₹)</th>
+        <th>Description</th>
+        <th class="amount">Amount (₹)</th>
+      </tr>
+      <tr>
+        <td>Basic Salary (CTC / 12)</td>
+        <td class="amount">{{basicSalary}}</td>
+        <td>Professional Tax</td>
+        <td class="amount deduct">{{professionalTax}}</td>
+      </tr>
+      <tr>
+        <td>House Rent Allowance</td>
+        <td class="amount">{{hra}}</td>
+        <td>TDS (if applicable)</td>
+        <td class="amount deduct">{{tds}}</td>
+      </tr>
+      <tr>
+        <td>Other Allowance (Special)</td>
+        <td class="amount">{{otherAllowance}}</td>
+        <td>Other Deductions</td>
+        <td class="amount deduct">{{otherDeductions}}</td>
+      </tr>
+    </table>
+
+    <div class="total">
+      <div><span>TOTAL EARNINGS</span><span>₹ {{totalEarnings}}</span></div>
+      <div><span>TOTAL DEDUCTIONS</span><span>₹ {{totalDeductions}}</span></div>
+    </div>
+
+    <div class="net">
+      <span><em>Net Pay (In Words):</em> {{netPayWords}}</span>
+      <span>NET PAY: ₹{{netPay}}</span>
+    </div>
+
+    <div class="note">This is a system-generated payslip</div>
+
+    <div class="sign">
+      <strong>Authorized Signatory</strong><br /><br />
+      <div class="sign-images">
+        <img src="https://nandhiji.com/wp-content/uploads/2026/Outsource/sign.png" alt="Sign" width="100" height="100" />
+        <img src="https://nandhiji.com/wp-content/uploads/2026/Outsource/stamp.png" alt="Stamp" width="100" height="100" />
+      </div>
+      Additional Director - CNESS Software India Pvt. Ltd.
+    </div>
+
+    <div class="footer bold color-gray-500 font-size-26">CNESS Software India Private Limited</div>
+  </div>
+</body>
+</html>

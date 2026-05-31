@@ -1,0 +1,10 @@
+# Use this file if Netlify "Base directory" is salary-slip-app (not the parent folder)
+[build]
+  command = "npm run build"
+
+[build.environment]
+  PDF_RENDERER = "html"
+  NODE_VERSION = "20"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
