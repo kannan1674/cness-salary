@@ -213,17 +213,15 @@ async function launchBrowserWithFallback() {
   const puppeteer = await import("puppeteer-core");
 
   if (
+    process.env.VERCEL ||
     process.env.NETLIFY ||
-    process.env.NETLIFY_DEV ||
     process.env.AWS_LAMBDA_FUNCTION_NAME
   ) {
-    const chromiumMod = await import("@sparticuz/chromium");
-    const chromium = chromiumMod.default;
-    chromium.setGraphicsMode = false;
+    const chromium = await import("@sparticuz/chromium");
 
     return puppeteer.default.launch({
-      args: [...chromium.args, "--disable-dev-shm-usage"],
-      executablePath: await chromium.executablePath(),
+      args: chromium.default.args,
+      executablePath: await chromium.default.executablePath(),
       headless: true,
     });
   }
