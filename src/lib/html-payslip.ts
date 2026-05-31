@@ -213,8 +213,8 @@ async function launchBrowserWithFallback() {
   const puppeteer = await import("puppeteer-core");
 
   if (
-    process.env.VERCEL ||
-    process.env.NETLIFY ||
+    process.env.VERCEL === "1" ||
+    process.env.NETLIFY === "true" ||
     process.env.AWS_LAMBDA_FUNCTION_NAME
   ) {
     const chromium = await import("@sparticuz/chromium");
@@ -235,7 +235,6 @@ async function launchBrowserWithFallback() {
   }
 
   const launchArgs = ["--no-sandbox", "--disable-setuid-sandbox"];
-
   let lastError: unknown;
 
   for (const executablePath of candidates) {
@@ -247,11 +246,14 @@ async function launchBrowserWithFallback() {
       });
     } catch (error) {
       lastError = error;
+      if (!isRetryableLaunchError(error)) {
+        throw error;
+      }
     }
   }
 
   throw new Error(
-    `Unable to launch Chrome. Last error: ${
+    `Unable to launch Chrome with available candidates (${candidates.join(", ")}). Last error: ${
       lastError instanceof Error ? lastError.message : String(lastError)
     }`
   );
