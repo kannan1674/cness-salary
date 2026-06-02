@@ -99,7 +99,6 @@ export async function sendPayslipEmail(
   await transporter.sendMail({
     from: cfg.from,
     to: params.to,
-    bcc: cfg.user,
     subject: `Salary Payslip - ${params.payPeriod} | CNESS Software India`,
     html: `
       <p>Dear ${params.employeeName},</p>
