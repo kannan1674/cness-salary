@@ -8,7 +8,6 @@ const OTHER_RATIO = 0.25;
 
 /** Shown on payslip only — not subtracted from net pay */
 const DISPLAY_PROFESSIONAL_TAX = 200;
-const DISPLAY_TOTAL_DEDUCTIONS = 200;
 
 function resolveMonthlyEarnings(employee: EmployeeRow): {
   basic: number;
@@ -43,14 +42,19 @@ export function buildPayslip(employee: EmployeeRow): PayslipData {
     { label: "Other Allowance (Special)", amount: other },
   ];
 
+  const tds = round2(employee.tds ?? 0);
+  const otherDeductions = round2(employee.otherDeductions ?? 0);
+
   const deductions = [
     { label: "Professional Tax", amount: DISPLAY_PROFESSIONAL_TAX },
-    { label: "TDS (if applicable)", amount: 0 },
-    { label: "Other Deductions", amount: 0 },
+    { label: "TDS (if applicable)", amount: tds },
+    { label: "Other Deductions", amount: otherDeductions },
   ];
 
   const totalEarnings = round2(basic + hra + other);
-  const totalDeductions = DISPLAY_TOTAL_DEDUCTIONS;
+  const totalDeductions = round2(
+    DISPLAY_PROFESSIONAL_TAX + tds + otherDeductions
+  );
   const netPay = totalEarnings;
 
   return {

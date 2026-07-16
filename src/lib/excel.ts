@@ -34,7 +34,15 @@ const COLUMN_ALIASES: Record<
   bankName: ["bank", "bank name"],
   accountNumber: ["account number", "account no", "account", "bank account"],
   ifscCode: ["ifsc", "ifsc code"],
-  payPeriod: ["pay period", "month", "period", "salary month", "payslip month"],
+  payPeriod: [
+    "pay period",
+    "payslip month",
+    "salary month",
+    "payroll month",
+    "month year",
+    "salary for month",
+    "pay month",
+  ],
   workingDays: [
     "working days",
     "work days",
@@ -241,6 +249,52 @@ function defaultPayPeriod(): string {
   return d.toLocaleString("en-IN", { month: "long", year: "numeric" });
 }
 
+/** Reject values like "22", "22 Days" mistaken from attendance columns */
+function looksLikeDaysCount(value: string): boolean {
+  const t = value.trim().toLowerCase();
+  return /^\d+\s*days?$/.test(t) || /^\d+$/.test(t);
+}
+
+function isValidPayPeriod(value: string): boolean {
+  const t = value.trim();
+  if (!t || looksLikeDaysCount(t)) return false;
+  if (
+    /\b(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)\b/i.test(
+      t
+    )
+  ) {
+    return true;
+  }
+  if (/\d{4}/.test(t) && /[a-zA-Z]/.test(t)) return true;
+  if (/^\d{1,2}[/-]\d{4}$/.test(t)) return true;
+  return false;
+}
+
+function formatPayPeriodDisplay(value: string): string {
+  const t = value.trim();
+  const mmyyyy = t.match(/^(\d{1,2})[/-](\d{4})$/);
+  if (mmyyyy) {
+    const d = new Date(Number(mmyyyy[2]), Number(mmyyyy[1]) - 1, 1);
+    if (!Number.isNaN(d.getTime())) {
+      return d.toLocaleString("en-IN", { month: "long", year: "numeric" });
+    }
+  }
+  const parsed = new Date(t);
+  if (!Number.isNaN(parsed.getTime()) && parsed.getFullYear() > 2000) {
+    return parsed.toLocaleString("en-IN", { month: "long", year: "numeric" });
+  }
+  return t;
+}
+
+function resolvePayPeriod(raw: string | undefined, fallback: string): string {
+  const base = fallback.trim() || defaultPayPeriod();
+  const candidate = raw?.trim() ?? "";
+  if (!candidate || !isValidPayPeriod(candidate)) {
+    return formatPayPeriodDisplay(base);
+  }
+  return formatPayPeriodDisplay(candidate);
+}
+
 function daysInMonthFromPeriod(period: string): number {
   const parsed = new Date(period);
   if (!Number.isNaN(parsed.getTime())) {
@@ -338,6 +392,8 @@ export function parseSalaryExcel(
     detectedColumns.presentDays = headers[presentIdx];
   if (workingIdx !== undefined)
     detectedColumns.workingDays = headers[workingIdx];
+  if (periodIdx !== undefined)
+    detectedColumns.payPeriod = headers[periodIdx];
 
   if (nameIdx === undefined) {
     errors.push(
@@ -364,10 +420,13 @@ export function parseSalaryExcel(
     );
   }
 
-  const globalPeriod =
+  const fallbackPeriod = defaultPayPeriod();
+  const globalPeriod = resolvePayPeriod(
     periodIdx !== undefined
-      ? cell(rows[headerRowIndex + 1], periodIdx) || defaultPayPeriod()
-      : defaultPayPeriod();
+      ? cell(rows[headerRowIndex + 1], periodIdx)
+      : undefined,
+    fallbackPeriod
+  );
   const workingDaysDefault = daysInMonthFromPeriod(globalPeriod);
   const fallbackEmail = options.fallbackEmail?.trim() ?? "";
 
@@ -415,7 +474,7 @@ export function parseSalaryExcel(
       bankName: cell(row, col("bankName")) || "—",
       accountNumber: cell(row, col("accountNumber")) || "—",
       ifscCode: cell(row, col("ifscCode")) || "—",
-      payPeriod: cell(row, periodIdx) || globalPeriod,
+      payPeriod: resolvePayPeriod(cell(row, periodIdx), globalPeriod),
       workingDays,
       presentDays,
       monthlyGross,

@@ -7,11 +7,31 @@ export interface EmailConfig {
   user: string;
   pass: string;
   from: string;
+ 
 }
+
+const DEFAULT_FROM_NAME = "CNESS HR";
 
 function stripEnvQuotes(value: string | undefined): string {
   if (!value) return "";
   return value.replace(/^["']|["']$/g, "").trim();
+}
+
+/** Ensures From shows "CNESS HR" not the raw SMTP username (e.g. accounts@cness.co). */
+function resolveFromAddress(fromEnv: string | undefined, smtpUser: string): string {
+  const user = smtpUser.trim();
+  const from = stripEnvQuotes(fromEnv);
+
+  if (from.includes("<") && from.includes("@")) {
+    return from;
+  }
+
+  if (/^[^\s<>]+@[^\s<>]+\.[^\s<>]+$/.test(from)) {
+    return `${DEFAULT_FROM_NAME} <${from}>`;
+  }
+
+  const displayName = from || DEFAULT_FROM_NAME;
+  return `${displayName} <${user}>`;
 }
 
 export function getEmailConfig(): EmailConfig | null {
@@ -22,9 +42,10 @@ export function getEmailConfig(): EmailConfig | null {
   const pass = stripEnvQuotes(
     process.env.SMTP_PASS || process.env.SMTP_PASSWORD
   );
-  const from = stripEnvQuotes(process.env.SMTP_FROM) || user;
 
-  if (!host || !user || !pass || !from) return null;
+  if (!host || !user || !pass) return null;
+
+  const from = resolveFromAddress(process.env.SMTP_FROM, user);
 
   return {
     host,
@@ -77,6 +98,29 @@ export async function verifySmtpConnection(): Promise<EmailConfig> {
   return config;
 }
 
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function buildPayslipEmailHtml(employeeName: string, payPeriod: string): string {
+  const name = escapeHtml(employeeName);
+  const period = escapeHtml(payPeriod);
+
+  return `
+      <p>Dear ${name},</p>
+      <p>Greetings from CNESS.</p>
+      <p>Please find attached your salary payslip for the month of <strong>${period}</strong>.</p>
+      <p>This is an automated system-generated email from CNESS Software India Private Limited. Kindly review the attached payslip for your records.</p>
+      <p>For any payroll-related queries, please contact the HR Team.</p>
+      <p>Warm regards,</p>
+      <p>HR Team<br/>CNESS Software India Private Limited</p>
+    `;
+}
+
 export async function sendPayslipEmail(
   params: {
     to: string;
@@ -99,13 +143,8 @@ export async function sendPayslipEmail(
   await transporter.sendMail({
     from: cfg.from,
     to: params.to,
-    subject: `Salary Payslip - ${params.payPeriod} | CNESS Software India`,
-    html: `
-      <p>Dear ${params.employeeName},</p>
-      <p>Please find attached your salary payslip for <strong>${params.payPeriod}</strong>.</p>
-      <p>This is a system-generated email from CNESS Software India Private Limited.</p>
-      <p>Regards,<br/>HR Team<br/>CNESS Software India Pvt. Ltd.</p>
-    `,
+    subject: `Salary Payslip – ${params.payPeriod}`,
+    html: buildPayslipEmailHtml(params.employeeName, params.payPeriod),
     attachments: [
       {
         filename: params.fileName,
