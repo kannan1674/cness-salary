@@ -7,7 +7,7 @@ const HRA_RATIO = 0.25;
 const OTHER_RATIO = 0.25;
 
 /** Shown on payslip only — not subtracted from net pay */
-const DISPLAY_PROFESSIONAL_TAX = 200;
+const DISPLAY_PROFESSIONAL_TAX = 0;
 const DISPLAY_TOTAL_DEDUCTIONS = 200;
 
 function resolveMonthlyEarnings(employee: EmployeeRow): {
