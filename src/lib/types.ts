@@ -19,6 +19,8 @@ export interface EmployeeRow {
   otherAllowance?: number;
   tds?: number;
   otherDeductions?: number;
+  /** Monthly net pay before pro-rating */
+  netPay?: number;
 }
 
 export interface PayslipLineItem {
