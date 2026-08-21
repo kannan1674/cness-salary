@@ -1,10 +1,7 @@
 import * as XLSX from "xlsx";
 import type { EmployeeRow, ParseResult } from "./types";
 
-const COLUMN_ALIASES: Record<
-  keyof Omit<EmployeeRow, "monthlyGross"> | "salary" | "annualCtc" | "gross",
-  string[]
-> = {
+const COLUMN_ALIASES = {
   employeeName: [
     "employee name",
     "name",
@@ -77,6 +74,15 @@ const COLUMN_ALIASES: Record<
   ],
   tds: ["tds", "tax deducted", "income tax"],
   otherDeductions: ["other deductions", "deductions other"],
+  netPay: [
+    "net pay",
+    "net salary",
+    "take home",
+    "take home salary",
+    "in hand",
+    "in hand salary",
+    "net amount",
+  ],
   salary: [
     "salary",
     "gross salary",
@@ -94,7 +100,9 @@ const COLUMN_ALIASES: Record<
   ],
   annualCtc: ["annual ctc", "yearly ctc", "annual salary", "yearly salary"],
   gross: ["gross earnings", "monthly gross"],
-};
+} as const;
+
+type ColumnAliasKey = keyof typeof COLUMN_ALIASES;
 
 export interface ParseOptions {
   /** Used when Excel has no Email column */
@@ -168,17 +176,17 @@ function findHeaderRowIndex(rows: unknown[][]): number {
   for (let r = 0; r < Math.min(rows.length, 20); r++) {
     const headers = (rows[r] as unknown[]).map((h) => String(h));
     let score = 0;
-    if (findColumnIndex(headers, COLUMN_ALIASES.employeeName) !== undefined)
+    if (findColumnIndex(headers, [...COLUMN_ALIASES.employeeName]) !== undefined)
       score += 2;
     if (
-      findColumnIndex(headers, COLUMN_ALIASES.salary) !== undefined ||
-      findColumnIndex(headers, COLUMN_ALIASES.annualCtc) !== undefined ||
-      findColumnIndex(headers, COLUMN_ALIASES.gross) !== undefined
+      findColumnIndex(headers, [...COLUMN_ALIASES.salary]) !== undefined ||
+      findColumnIndex(headers, [...COLUMN_ALIASES.annualCtc]) !== undefined ||
+      findColumnIndex(headers, [...COLUMN_ALIASES.gross]) !== undefined
     )
       score += 2;
-    if (findColumnIndex(headers, COLUMN_ALIASES.presentDays) !== undefined)
+    if (findColumnIndex(headers, [...COLUMN_ALIASES.presentDays]) !== undefined)
       score += 2;
-    if (findColumnIndex(headers, COLUMN_ALIASES.email) !== undefined) score += 1;
+    if (findColumnIndex(headers, [...COLUMN_ALIASES.email]) !== undefined) score += 1;
 
     if (score > bestScore) {
       bestScore = score;
@@ -244,9 +252,32 @@ function cellNumber(row: unknown[], idx?: number): number | undefined {
 }
 
 function defaultPayPeriod(): string {
-  const d = new Date();
-  d.setMonth(d.getMonth() - 1);
-  return d.toLocaleString("en-IN", { month: "long", year: "numeric" });
+  return new Date().toLocaleString("en-IN", { month: "long", year: "numeric" });
+}
+
+/** Read pay period from a cell — handles Excel dates and serial numbers. */
+function cellPayPeriod(row: unknown[], idx?: number): string {
+  if (idx === undefined || idx < 0) return "";
+  const v = row[idx];
+  if (v instanceof Date && !Number.isNaN(v.getTime())) {
+    return v.toLocaleString("en-IN", { month: "long", year: "numeric" });
+  }
+  if (typeof v === "number" && Number.isFinite(v) && v > 30000 && v < 60000) {
+    const d = new Date((v - 25569) * 86400 * 1000);
+    if (!Number.isNaN(d.getTime())) {
+      return d.toLocaleString("en-IN", { month: "long", year: "numeric" });
+    }
+  }
+  const s = cell(row, idx);
+  if (!s) return "";
+  const n = Number(s.replace(/,/g, ""));
+  if (Number.isFinite(n) && n > 30000 && n < 60000) {
+    const d = new Date((n - 25569) * 86400 * 1000);
+    if (!Number.isNaN(d.getTime())) {
+      return d.toLocaleString("en-IN", { month: "long", year: "numeric" });
+    }
+  }
+  return s;
 }
 
 /** Reject values like "22", "22 Days" mistaken from attendance columns */
@@ -293,6 +324,26 @@ function resolvePayPeriod(raw: string | undefined, fallback: string): string {
     return formatPayPeriodDisplay(base);
   }
   return formatPayPeriodDisplay(candidate);
+}
+
+function firstValidPayPeriodFromRows(
+  rows: unknown[][],
+  headerRowIndex: number,
+  periodIdx: number,
+  hasEmployeeName: (row: unknown[]) => boolean
+): { period?: string; invalidExamples: string[] } {
+  const invalidExamples: string[] = [];
+  for (let r = headerRowIndex + 1; r < rows.length; r++) {
+    const row = rows[r] as unknown[];
+    if (isEmptyRow(row) || !hasEmployeeName(row)) continue;
+    const raw = cellPayPeriod(row, periodIdx);
+    if (!raw) continue;
+    if (isValidPayPeriod(raw)) {
+      return { period: formatPayPeriodDisplay(raw), invalidExamples: [] };
+    }
+    if (invalidExamples.length < 2) invalidExamples.push(raw);
+  }
+  return { invalidExamples };
 }
 
 function daysInMonthFromPeriod(period: string): number {
@@ -369,8 +420,8 @@ export function parseSalaryExcel(
 
   const headerRowIndex = findHeaderRowIndex(rows);
   const headers = (rows[headerRowIndex] as unknown[]).map((h) => cellValue(h));
-  const col = (key: keyof typeof COLUMN_ALIASES) =>
-    findColumnIndex(headers, COLUMN_ALIASES[key]);
+  const col = (key: ColumnAliasKey) =>
+    findColumnIndex(headers, [...COLUMN_ALIASES[key]]);
 
   const nameIdx = col("employeeName");
   const emailIdx = col("email");
@@ -421,12 +472,22 @@ export function parseSalaryExcel(
   }
 
   const fallbackPeriod = defaultPayPeriod();
-  const globalPeriod = resolvePayPeriod(
-    periodIdx !== undefined
-      ? cell(rows[headerRowIndex + 1], periodIdx)
-      : undefined,
-    fallbackPeriod
-  );
+  let globalPeriod = fallbackPeriod;
+  if (periodIdx !== undefined) {
+    const found = firstValidPayPeriodFromRows(
+      rows,
+      headerRowIndex,
+      periodIdx,
+      (row) => !!cell(row, nameIdx)
+    );
+    if (found.period) {
+      globalPeriod = found.period;
+    } else if (found.invalidExamples.length > 0) {
+      errors.push(
+        `Pay Period column has invalid values (e.g. "${found.invalidExamples[0]}"). Enter a month and year like "August 2026" — not day counts.`
+      );
+    }
+  }
   const workingDaysDefault = daysInMonthFromPeriod(globalPeriod);
   const fallbackEmail = options.fallbackEmail?.trim() ?? "";
 
@@ -474,7 +535,7 @@ export function parseSalaryExcel(
       bankName: cell(row, col("bankName")) || "—",
       accountNumber: cell(row, col("accountNumber")) || "—",
       ifscCode: cell(row, col("ifscCode")) || "—",
-      payPeriod: resolvePayPeriod(cell(row, periodIdx), globalPeriod),
+      payPeriod: resolvePayPeriod(cellPayPeriod(row, periodIdx), globalPeriod),
       workingDays,
       presentDays,
       monthlyGross,
@@ -483,6 +544,7 @@ export function parseSalaryExcel(
       otherAllowance: cellNumber(row, col("otherAllowance")),
       tds: cellNumber(row, col("tds")),
       otherDeductions: cellNumber(row, col("otherDeductions")),
+      netPay: cellNumber(row, col("netPay")),
     });
   }
 
@@ -534,9 +596,10 @@ export function createSampleWorkbook(): ArrayBuffer {
       "Working Days",
       "Present Days",
       "Salary",
-      "CTC",
+      "Basic",
       "House Rent",
       "Other",
+      "Net Pay",
     ],
     [
       "Vimal Paulson Pinheiro",
@@ -556,6 +619,7 @@ export function createSampleWorkbook(): ArrayBuffer {
       35000,
       17500,
       17500,
+      69800,
     ],
     [
       "Jane Doe",
@@ -575,6 +639,7 @@ export function createSampleWorkbook(): ArrayBuffer {
       30000,
       15000,
       15000,
+      59800,
     ],
   ];
   const sheet = XLSX.utils.aoa_to_sheet(data);
