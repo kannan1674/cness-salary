@@ -1,11 +1,6 @@
 import { amountToIndianWords } from "./amount-words";
 import type { EmployeeRow, PayslipData } from "./types";
 
-/** Monthly split: Basic 50%, HRA 25%, Other 25% (e.g. ₹70,000 → 35,000 / 17,500 / 17,500) */
-const BASIC_RATIO = 0.5;
-const HRA_RATIO = 0.25;
-const OTHER_RATIO = 0.25;
-
 /** Shown on payslip only — not subtracted from net pay */
 const DISPLAY_PROFESSIONAL_TAX = 0;
 
@@ -14,12 +9,10 @@ function resolveMonthlyEarnings(employee: EmployeeRow): {
   hra: number;
   other: number;
 } {
-  const gross = employee.monthlyGross;
-
   return {
-    basic: employee.basicSalary ?? gross * BASIC_RATIO,
-    hra: employee.houseRentAllowance ?? gross * HRA_RATIO,
-    other: employee.otherAllowance ?? gross * OTHER_RATIO,
+    basic: employee.basicSalary ?? 0,
+    hra: employee.houseRentAllowance ?? 0,
+    other: employee.otherAllowance ?? 0,
   };
 }
 
