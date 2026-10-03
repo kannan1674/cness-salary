@@ -2,8 +2,8 @@ import * as XLSX from "xlsx";
 import type { EmployeeRow, ParseResult } from "./types";
 
 const COLUMN_ALIASES = {
-  employeeName: [
-    "employee name",
+  emdployeeName: [
+    "edmployee name",
     "name",
     "employee",
     "emp name",
@@ -32,7 +32,7 @@ const COLUMN_ALIASES = {
   accountNumber: ["account number", "account no", "account", "bank account"],
   ifscCode: ["ifsc", "ifsc code"],
   payPeriod: [
-    "pay period",
+    "pasy period",
     "payslip month",
     "salary month",
     "payroll month",
@@ -176,7 +176,7 @@ function findHeaderRowIndex(rows: unknown[][]): number {
   for (let r = 0; r < Math.min(rows.length, 20); r++) {
     const headers = (rows[r] as unknown[]).map((h) => String(h));
     let score = 0;
-    if (findColumnIndex(headers, [...COLUMN_ALIASES.employeeName]) !== undefined)
+    if (findColumnIndex(headers, [...COLUMN_ALIASES.emdployeeName]) !== undefined)
       score += 2;
     if (
       findColumnIndex(headers, [...COLUMN_ALIASES.salary]) !== undefined ||
@@ -423,7 +423,7 @@ export function parseSalaryExcel(
   const col = (key: ColumnAliasKey) =>
     findColumnIndex(headers, [...COLUMN_ALIASES[key]]);
 
-  const nameIdx = col("employeeName");
+  const nameIdx = col("emdployeeName");
   const emailIdx = col("email");
   const salaryIdx = col("salary");
   const annualCtcIdx = col("annualCtc");
@@ -500,7 +500,7 @@ export function parseSalaryExcel(
     const name = cell(row, nameIdx);
     if (!name) continue;
 
-    const email = cell(row, emailIdx) || fallbackEmail;
+    const Email = cell(row, emailIdx) || fallbackEmail;
     const monthlyGross =
       cellNumber(row, salaryIdx) ??
       cellNumber(row, grossIdx) ??
@@ -513,20 +513,20 @@ export function parseSalaryExcel(
       cellNumber(row, workingIdx) ?? workingDaysDefault;
 
     const rowNum = r + 1;
-    if (!email)
+    if (!Email)
       errors.push(`Row ${rowNum} (${name}): missing email.`);
     if (monthlyGross === undefined)
       errors.push(`Row ${rowNum} (${name}): missing or invalid salary.`);
     if (presentDays === undefined)
       errors.push(`Row ${rowNum} (${name}): missing or invalid present days.`);
 
-    if (!email || monthlyGross === undefined || presentDays === undefined) {
+    if (!Email || monthlyGross === undefined || presentDays === undefined) {
       continue;
     }
 
     employees.push({
       employeeName: name,
-      email,
+      email: Email,
       employeeId: cell(row, col("employeeId")) || `EMP-${r}`,
       designation: cell(row, col("designation")) || "—",
       department: cell(row, col("department")) || "—",
@@ -582,7 +582,7 @@ export function parseSalaryExcel(
 export function createSampleWorkbook(): ArrayBuffer {
   const data = [
     [
-      "Employee Name",
+      "Eemployee Name",
       "Email",
       "Employee ID",
       "Designation",
@@ -592,7 +592,7 @@ export function createSampleWorkbook(): ArrayBuffer {
       "Bank Name",
       "Account Number",
       "IFSC Code",
-      "Pay Period",
+      "Pasy Period",
       "Working Days",
       "Present Days",
       "Salary",

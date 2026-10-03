@@ -48,8 +48,10 @@ export function buildPayslip(employee: EmployeeRow): PayslipData {
   const totalDeductions = round2(
     DISPLAY_PROFESSIONAL_TAX + tds + otherDeductions
   );
-  const monthlyNetPay = employee.netPay ?? 0;
-  const netPay = round2(monthlyNetPay * factor);
+  const netPay =
+    employee.netPay !== undefined
+      ? round2(employee.netPay * factor)
+      : totalEarnings;
 
   return {
     employee,
